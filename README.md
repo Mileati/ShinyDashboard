@@ -1,6 +1,6 @@
  About Data:
 
-This is a simulated data containing 10 of the most important features that were obtained from recursive feature elimination using random forest as a base mode to rank feature importance to predict risk of readmission within 30 days since discharge in patients who underwent CABG. The data contains 5605 patients. 
+This is a simulated data containing 10 of the most important biological features that were obtained from recursive feature elimination using random forest as a base model to rank feature importance to predict risk of readmission within 30 days since discharge in patients who underwent CABG. The data contains 5605 patients. 
  
 
  Dashboard Overview 

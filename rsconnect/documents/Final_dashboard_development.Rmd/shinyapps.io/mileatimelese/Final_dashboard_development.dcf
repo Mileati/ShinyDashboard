@@ -1,0 +1,12 @@
+name: Final_dashboard_development
+title: Final_dashboard_development
+username: mileatimelese
+account: mileatimelese
+server: shinyapps.io
+hostUrl: https://api.shinyapps.io/v1
+appId: 14189768
+bundleId: 10183316
+url: https://mileatimelese.shinyapps.io/Final_dashboard_development/
+version: 1
+asMultiple: FALSE
+asStatic: FALSE
