@@ -1,0 +1,12 @@
+name: dashboard_development
+title: dashboard_development
+username: mileatimelese
+account: mileatimelese
+server: shinyapps.io
+hostUrl: https://api.shinyapps.io/v1
+appId: 14622286
+bundleId: 10183550
+url: https://mileatimelese.shinyapps.io/dashboard_development/
+version: 1
+asMultiple: FALSE
+asStatic: FALSE
