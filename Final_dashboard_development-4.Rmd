@@ -1,0 +1,245 @@
+---
+title: "CABG Readmission Analysis"
+output: 
+  flexdashboard::flex_dashboard:
+    orientation: columns
+    social: menu
+runtime: shiny
+---
+
+```{r setup, include=FALSE}
+library(shiny)
+library(flexdashboard)
+library(ggplot2)
+library(DT)
+library(dplyr)
+library(plotly)
+
+# Load Original Data
+original_dataset <- read.csv("~/downloads/simulated_cabg_dataset.csv") %>% select(-X)
+
+# Reactive values for data storage
+data_store <- reactiveVal(original_dataset)
+
+# Function to update dataset
+update_data <- function(new_data) {
+  current_data <- data_store()
+  updated_data <- bind_rows(current_data, new_data)
+  data_store(updated_data)
+}
+```
+
+## Dashboard Summary
+### Dashboard Overview
+Coronary Artery Bypass Grafting (CABG) is a common surgical procedure worldwide. Predicting readmission risk can improve patient care, support clinical decision-making, and reduce healthcare costs. This dashboard explores factors associated with 30-day readmission after CABG.The data set is simulated based on the distribution of the original. The model is a simple logistic regression and requires further refinement therefore results are not conclusive and don't provide any useful medical information. The main goal is to demonstrate proficiency in building dashboards and this layout can be used with proper model development to get robust results.  Users can:
+
+- Explore dataset summaries and distributions of key variables.
+- Add new patient observations.
+- Predict readmission risk using a logistic regression model.
+- Visualize the contribution of each predictor to the calculated risk
+- Download data 
+
+
+### Data Overview
+
+```{r}
+fluidRow(
+  column(12, DTOutput("table_display")),
+  column(12, downloadButton("download_dataset", "Download Data"))
+)
+
+```
+
+
+
+
+```{r}
+# Render the data table
+output$table_display <- renderDT({
+  datatable(data_store())
+})
+
+# Download Handler
+output$download_dataset <- downloadHandler(
+  filename = function() {
+    paste("CABG_dataset_", Sys.Date(), ".csv", sep = "")
+  },
+  content = function(file) {
+    write.csv(data_store(), file, row.names = FALSE)
+  }
+)
+
+```
+
+
+
+## Add new
+
+### Add New Observation
+
+```{r}
+# adding new observations
+fluidRow(
+  column(3, numericInput("new_age", "Age", value = 60, min = 18, max = 100)),
+  column(3, numericInput("new_bmi", "Body Mass Index (BMI)", value = 25, min = 15, max = 40)),
+  column(3, numericInput("new_icu", "Initial ICU Stay (Hours)", value = 24, min = 0, max = 72)),
+  column(3, numericInput("new_wbc", "Last WBC Count", value = 7, min = 3, max = 15))
+)
+
+fluidRow(
+  column(3, numericInput("new_albumin", "Total Albumin Level", value = 3.5, min = 2, max = 5)),
+  column(3, numericInput("new_creatinine", "Postoperative Creatinine", value = 1, min = 0.5, max = 3)),
+  column(3, numericInput("new_platelet", "Platelet Count", value = 250, min = 50, max = 500)),
+  column(3, numericInput("new_last_creat", "Last Creatinine Level", value = 1.2, min = 0.5, max = 3))
+  )
+
+fluidRow(
+  column(3, numericInput("new_hematocrit", "Last Hematocrit Level", value = 40, min = 20, max = 50)),
+  column(3, numericInput("new_a1c", "Last A1C Level", value = 5.5, min = 4, max = 10)),
+  column(3, selectInput("new_readmission", "Readmission Status", choices = c("No" = 0, "Yes" = 1))
+))
+
+
+
+
+actionButton("add_data", "Add Observation")
+
+observeEvent(input$add_data, {
+  new_entry <- data.frame(
+    rf_total_albumin = input$new_albumin,
+    rf_last_hematocrit = input$new_hematocrit,
+    patient_age = input$new_age,
+    initial_icu_hours = input$new_icu,
+    bmi = input$new_bmi,
+    rf_platelet_count = input$new_platelet,
+    last_a1c_level = input$new_a1c,
+    rf_last_wbc_count = input$new_wbc,
+    postop_creatinine_level = input$new_creatinine,
+    rf_last_creat_level = input$new_last_creat,
+    readmission_status = input$new_readmission
+  )
+  update_data(new_entry)
+})
+```
+
+
+
+
+### Variable Distributions
+
+```{r}
+
+selectInput("eda_var", "Select Variable to Explore", choices = c(
+  "Age" = "patient_age",
+  "BMI (kg/m²)" = "bmi",
+  "Initial ICU Hours" = "initial_icu_hours",
+  "Total Albumin Level" = "rf_total_albumin",
+  "Postoperative Creatinine" = "postop_creatinine_level",
+  "Platelet Count" = "rf_platelet_count",
+  "Last Hematocrit Level" = "rf_last_hematocrit",
+  "Last A1C Level" = "last_a1c_level",
+  "Last WBC Count" = "rf_last_wbc_count",
+  "Last Creatinine Level" = "rf_last_creat_level"
+))
+
+# variable names to readable labels
+var_labels <- c(
+  "patient_age" = "Age(years)",
+  "bmi" = "BMI (kg/m²)",
+  "initial_icu_hours" = "Initial ICU Hours",
+  "rf_total_albumin" = "Total Albumin Level",
+  "postop_creatinine_level" = "Postoperative Creatinine",
+  "rf_platelet_count" = "Platelet Count",
+  "rf_last_hematocrit" = "Last Hematocrit Level",
+  "last_a1c_level" = "Last A1C Level",
+  "rf_last_wbc_count" = "Last WBC Count",
+  "rf_last_creat_level" = "Last Creatinine Level"
+)
+
+# renderPlotly function
+renderPlotly({
+  selected_var <- input$eda_var
+  readable_var <- var_labels[selected_var]  # Get the readable label
+
+  ggplot(data_store(), aes_string(x = selected_var, fill = "as.factor(readmission_status)")) +
+    geom_density(alpha = 0.5) +
+    labs(
+      title = paste("Distribution of", readable_var, "by Readmission Status"),
+      x = readable_var,
+      fill = "Readmission"
+    ) +
+    theme(plot.title = element_text(size = 9))
+})
+
+```
+
+
+## Risk model
+### Risk Prediction
+
+```{r}
+#developing logistic model
+logit_model <- reactive({
+  glm(readmission_status ~ ., data = data_store(), family = binomial)
+})
+predict_risk <- function(input_data) {
+  input_data <- input_data %>% mutate(across(everything(), as.numeric)) # Ensure numeric format
+  predict(logit_model(), newdata = input_data, type = "response")
+}
+
+predict_input <- reactive({
+  data.frame(
+    rf_total_albumin = input$new_albumin,
+    rf_last_hematocrit = input$new_hematocrit,
+    patient_age = input$new_age,
+    initial_icu_hours = input$new_icu,
+    bmi = input$new_bmi,
+    rf_platelet_count = input$new_platelet,
+    last_a1c_level = input$new_a1c,
+    rf_last_wbc_count = input$new_wbc,
+    postop_creatinine_level = input$new_creatinine,
+    rf_last_creat_level = input$new_last_creat
+  )
+})
+
+#show the predicted risk 
+renderText({
+  paste("Predicted Readmission Risk:", round(predict_risk(predict_input()) * 100, 2), "%")
+})
+
+```
+
+### Variable contribution to risk
+```{r}
+# visualizing predictor contribution to calculated risk
+output$contrib_plot <- renderPlotly({
+  
+  coef_values <- coef(logit_model())[-1]  # Remove intercept
+  contribs <- coef_values * unlist(predict_input())
+
+  contribs_df <- data.frame(
+    Variable = names(coef_values),
+    Contribution = contribs
+  )
+
+    # Replace raw variable names with readable labels
+  contribs_df$Variable <- var_labels[contribs_df$Variable]
+  p <- ggplot(contribs_df, aes(x = reorder(Variable, Contribution), y = Contribution, fill = Contribution)) +
+    geom_bar(stat = "identity") +
+    coord_flip() +
+    labs(title = "Predictor's Contribution to Readmission Risk",
+         x = "Feature", y = "Contribution") +
+    theme_minimal() +
+    theme(axis.text.x = element_text(angle = 45, hjust = 1)) +  # Ensure full label visibility
+
+    theme(plot.title = element_text(size = 9))
+  ggplotly(p)
+})
+
+plotlyOutput("contrib_plot")
+
+```
+
+
+
+
